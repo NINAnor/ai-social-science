@@ -1,0 +1,15 @@
+# Changes here will be overwritten by Copier
+_commit: v0.2.5
+_src_path: gh:ninanor/python-template
+author_name: bencretois
+debug: false
+default_branch_name: main
+docker: false
+email: benjamin.cretois@nina.no
+notebook: false
+project_name: AI-social-science
+project_slug: ai-social-science
+repo_name: ai-social-science
+repo_org: ninanor
+template_type: python
+type_annotations: false
