@@ -7,10 +7,6 @@ PROJECT_OUTPUT="$PROJECT/markdown_output"
 
 PARALLEL_OPTS="--bar -j 1 --delay 2m"
 
-#parallel $PARALLEL_OPTS --joblog log1.txt -- \
-#    python -m src.article_to_markdown --output_dir "$PROJECT_OUTPUT" --file_path \
-#    ::: "$PROJECT/files_to_process/"*/*.pdf
-
 parallel $PARALLEL_OPTS --joblog log2.txt -- \
-    python -m src.summarize_article --input_path \
+    python -m src.summarize_article --model "deepseek-r1" --input_path \
     ::: "$PROJECT_OUTPUT"/*.md

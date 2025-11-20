@@ -1,3 +1,7 @@
+[dependency-groups]
+dev = [
+  "deptry"
+]
 
 [project]
 authors = [
@@ -8,13 +12,14 @@ authors = [
 dependencies = [
   "django-environ",
   "matplotlib>=3.10.7",
+  "numpy",
   "ollama>=0.6.1",
   "openai>=2.8.0",
   "pandas>=2.3.3",
   "plotly>=6.5.0",
   "py-zerox>=0.0.7",
   "scikit-learn>=1.7.2",
-  "sentence-transformers>=5.1.2",
+  "sentence-transformers>=5.1.2"
 ]
 description = ""
 license = "GPL-3.0+"
@@ -23,14 +28,8 @@ readme = "README.md"
 requires-python = ">=3.12"
 version = "0.1.0"
 
-
 [project.scripts]
 ai-social-science = "main:start"
-
-[dependency-groups]
-dev = [
-  "deptry",
-]
 
 [tool.ruff]
 fix = true

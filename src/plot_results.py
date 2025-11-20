@@ -1,14 +1,12 @@
+import argparse
 import pathlib
 
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 import plotly.graph_objects as go
-
 from sentence_transformers import SentenceTransformer
 from sklearn.decomposition import PCA
-import numpy as np
-import matplotlib.pyplot as plt
-
-import argparse
-import pandas as pd
 
 
 def merge_dfs(summary_dir: str) -> pd.DataFrame:
@@ -17,8 +15,8 @@ def merge_dfs(summary_dir: str) -> pd.DataFrame:
     merged_df = pd.concat(df_list, ignore_index=True)
     return merged_df
 
-def get_embeddings(model, df: pd.DataFrame) -> np.ndarray:
 
+def get_embeddings(model, df: pd.DataFrame) -> np.ndarray:
     article_ids = []
     article_vectors = []
 
@@ -29,47 +27,54 @@ def get_embeddings(model, df: pd.DataFrame) -> np.ndarray:
         article_ids.append(art_id)
         article_vectors.append(article_vec)
 
-    article_vectors = np.vstack(article_vectors)  
+    article_vectors = np.vstack(article_vectors)
     return article_ids, article_vectors
 
-def plotly_plot(article_ids, article_2d, concept_2d, unique_concepts, output_file="plot.html"):
+
+def plotly_plot(
+    article_ids, article_2d, concept_2d, unique_concepts, output_file="plot.html"
+):
     fig = go.Figure()
 
     # Articles
-    fig.add_trace(go.Scatter(
-        x=article_2d[:, 0],
-        y=article_2d[:, 1],
-        mode="markers",
-        marker=dict(size=12),
-        name="Articles",
-        hovertext=article_ids,
-        hoverinfo="text"
-    ))
+    fig.add_trace(
+        go.Scatter(
+            x=article_2d[:, 0],
+            y=article_2d[:, 1],
+            mode="markers",
+            marker=dict(size=12),
+            name="Articles",
+            hovertext=article_ids,
+            hoverinfo="text",
+        )
+    )
 
     # Concepts
-    fig.add_trace(go.Scatter(
-        x=concept_2d[:, 0],
-        y=concept_2d[:, 1],
-        mode="markers",
-        marker=dict(symbol="x", size=10),
-        name="Concepts",
-        hovertext=unique_concepts,
-        hoverinfo="text"
-    ))
+    fig.add_trace(
+        go.Scatter(
+            x=concept_2d[:, 0],
+            y=concept_2d[:, 1],
+            mode="markers",
+            marker=dict(symbol="x", size=10),
+            name="Concepts",
+            hovertext=unique_concepts,
+            hoverinfo="text",
+        )
+    )
 
     fig.update_layout(
         title="Articles and Concepts in PCA Space",
         xaxis_title="PC1",
         yaxis_title="PC2",
         width=800,
-        height=600
+        height=600,
     )
 
     fig.write_html(output_file)
     print(f"Plot saved to {output_file}")
-    
-def matplot_plot(article_ids, article_2d, concept_2d, unique_concepts, model, pca):
 
+
+def matplot_plot(article_ids, article_2d, concept_2d, unique_concepts, model, pca):
     plt.figure(figsize=(6, 5))
     plt.scatter(article_2d[:, 0], article_2d[:, 1])
 
@@ -84,7 +89,9 @@ def matplot_plot(article_ids, article_2d, concept_2d, unique_concepts, model, pc
 
     plt.figure(figsize=(7, 6))
     plt.scatter(article_2d[:, 0], article_2d[:, 1], marker="o", label="Articles")
-    plt.scatter(concept_2d[:, 0], concept_2d[:, 1], marker="x", alpha=0.6, label="Concepts")
+    plt.scatter(
+        concept_2d[:, 0], concept_2d[:, 1], marker="x", alpha=0.6, label="Concepts"
+    )
 
     # Labels
     for i, art_id in enumerate(article_ids):
@@ -101,23 +108,66 @@ def matplot_plot(article_ids, article_2d, concept_2d, unique_concepts, model, pc
     plt.show()
     plt.savefig("articles_concepts_pca.png", dpi=300)
 
+
 def main(summary_dir: str, output_image: str = "articles_concepts_pca.png"):
+    # EXAMPLE DATA -- NEED TO CHANGE TO THE CSVs!
     articles_concepts = {
-        "A1": ["biodiversity", "ecosystem", "conservation", "habitat", "species",
-            "restoration", "fragmentation", "landscape", "connectivity", "resilience"],
-        "A2": ["machine learning", "deep learning", "neural networks", "classification",
-            "prediction", "regression", "optimization", "training", "testing", "validation"],
-        "A3": ["climate change", "global warming", "carbon emissions", "mitigation",
-            "adaptation", "temperature", "precipitation", "extreme events", "IPCC", "scenarios"],
-        "A4": ["forest", "logging", "deforestation", "land use", "carbon storage",
-            "biodiversity", "ecosystem services", "policy", "management", "governance"],
-        # ... add more articles
+        "A1": [
+            "biodiversity",
+            "ecosystem",
+            "conservation",
+            "habitat",
+            "species",
+            "restoration",
+            "fragmentation",
+            "landscape",
+            "connectivity",
+            "resilience",
+        ],
+        "A2": [
+            "machine learning",
+            "deep learning",
+            "neural networks",
+            "classification",
+            "prediction",
+            "regression",
+            "optimization",
+            "training",
+            "testing",
+            "validation",
+        ],
+        "A3": [
+            "climate change",
+            "global warming",
+            "carbon emissions",
+            "mitigation",
+            "adaptation",
+            "temperature",
+            "precipitation",
+            "extreme events",
+            "IPCC",
+            "scenarios",
+        ],
+        "A4": [
+            "forest",
+            "logging",
+            "deforestation",
+            "land use",
+            "carbon storage",
+            "biodiversity",
+            "ecosystem services",
+            "policy",
+            "management",
+            "governance",
+        ],
     }
 
-    unique_concepts = sorted({c for concepts in articles_concepts.values() for c in concepts})
+    unique_concepts = sorted(
+        {c for concepts in articles_concepts.values() for c in concepts}
+    )
 
     # Load embedding model
-    model = SentenceTransformer("all-MiniLM-L6-v2")  # small, fast; good enough for this
+    model = SentenceTransformer("all-MiniLM-L6-v2")
 
     # Compute embeddings
     article_ids, article_vectors = get_embeddings(model, articles_concepts)
@@ -125,17 +175,27 @@ def main(summary_dir: str, output_image: str = "articles_concepts_pca.png"):
 
     # Do the PCA
     pca = PCA(n_components=2)
-    article_2d = pca.fit_transform(article_vectors)  # shape: (N_articles, 2)
+    article_2d = pca.fit_transform(article_vectors)
     concept_2d = pca.transform(concept_embs)
 
-    plotly_plot(article_ids, article_2d, concept_2d, unique_concepts, "articles_pca_plot.html")
+    plotly_plot(
+        article_ids, article_2d, concept_2d, unique_concepts, "articles_pca_plot.html"
+    )
     matplot_plot(article_ids, article_2d, concept_2d, unique_concepts, model, pca)
 
-if __name__ == "__main__":
 
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--summary_dir", type=str, required=True, help="Path to the csv summaries") 
-    parser.add_argument("--output_image", type=str, required=False, default="articles_concepts_pca.png", help="Name of the output image file")
+    parser.add_argument(
+        "--summary_dir", type=str, required=True, help="Path to the csv summaries"
+    )
+    parser.add_argument(
+        "--output_image",
+        type=str,
+        required=False,
+        default="articles_concepts_pca.png",
+        help="Name of the output image file",
+    )
     args = parser.parse_args()
 
     main(args.summary_dir, args.output_image)
