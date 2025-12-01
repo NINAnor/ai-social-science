@@ -42,6 +42,8 @@ def get_words(input_path: str, output_path: str, model: str = "gpt"):
     with input_file.open(encoding="utf-8") as file:
         article = file.read()
 
+    # Concepts related to social acceptance 
+    # Use of social acceptance 
     prompt = f"""Read the text. Identify the ten most essential conceptual terms
     that capture the core ideas of the article.
 

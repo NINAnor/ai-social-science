@@ -34,13 +34,13 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--file_path", type=str, required=True, help="Path to the input file"
-    )  # "/home/benjamin.cretois/Code/social-science-AI/test/article.pdf"
+    ) 
     parser.add_argument(
         "--output_dir",
         type=str,
         required=False,
         help="Directory to save the markdown output",
-    )  # "/home/benjamin.cretois/Code/social-science-AI/test/"
+    ) 
     parser.add_argument(
         "--model", type=str, default="gpt-4o-mini", help="Model to use for conversion"
     )
@@ -62,7 +62,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     BASE_DIR = pathlib.Path(__file__).parent.parent
-    print(BASE_DIR / ".env")
     environ.Env.read_env(BASE_DIR / ".env")
 
     if args.output_dir is None:
@@ -81,5 +80,4 @@ if __name__ == "__main__":
         )
     )
 
-    # uv run python src/article_to_markdown.py --file_path \
-    # "/home/benjamin.cretois/Code/social-science-AI/test/article.pdf"
+    # uv run python src/article_to_markdown.py --file_path "/home/benjamin.cretois/Code/social-science-AI/test/article.pdf" --model gemini/gemini-2.0-flash

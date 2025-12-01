@@ -11,6 +11,7 @@ authors = [
 # See https://www.python.org/dev/peps/pep-0621/
 dependencies = [
   "django-environ",
+  "kaleido>=1.2.0",
   "matplotlib>=3.10.7",
   "numpy",
   "ollama>=0.6.1",

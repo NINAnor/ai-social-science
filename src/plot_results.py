@@ -1,129 +1,30 @@
+"""
+Main plotting script for analyzing and visualizing article concepts and clusters.
+"""
 import argparse
-import pathlib
-from collections import Counter
+import sys
+import os
 
 import numpy as np
-import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
 from sentence_transformers import SentenceTransformer
 from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
-from sklearn.metrics.pairwise import cosine_similarity
 
+# Add the parent directory to sys.path for imports
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-def merge_dfs(summary_dir: str) -> pd.DataFrame:
-    summary_files = pathlib.Path(summary_dir).glob("*.csv")
-    df_list = [pd.read_csv(f) for f in summary_files]
-    return pd.concat(df_list, ignore_index=True)
-
-
-def get_embeddings(model, articles_concepts: dict):
-    article_ids, article_vectors = [], []
-
-    for art_id, concepts in articles_concepts.items():
-        concept_embs = model.encode(concepts)
-        article_vec = np.mean(concept_embs, axis=0)
-        article_ids.append(art_id)
-        article_vectors.append(article_vec)
-
-    return article_ids, np.vstack(article_vectors)
-
-
-def interpret_axes(concept_2d, unique_concepts, top=10):
-    pc1 = concept_2d[:, 0]
-    pc2 = concept_2d[:, 1]
-
-    def top_terms(values):
-        return {
-            "pos": [unique_concepts[i] for i in np.argsort(values)[-top:]],
-            "neg": [unique_concepts[i] for i in np.argsort(values)[:top]],
-        }
-
-    return {"PC1": top_terms(pc1), "PC2": top_terms(pc2)}
-
-
-def build_axis_labels(axis_info, max_terms=5):
-    def fmt(name, terms):
-        return f"{name}: " + ", ".join(terms[:max_terms])
-
-    return {
-        "PC1_pos": fmt("PC1+", axis_info["PC1"]["pos"]),
-        "PC1_neg": fmt("PC1−", axis_info["PC1"]["neg"]),
-        "PC2_pos": fmt("PC2+", axis_info["PC2"]["pos"]),
-        "PC2_neg": fmt("PC2−", axis_info["PC2"]["neg"]),
-    }
-
-
-# ---------- ELLIPSE UTILITY ----------
-def compute_cluster_ellipse(points_2d: np.ndarray, n_std: float = 2.0, n_points: int = 100):
-    """Return ellipse around a cluster using covariance."""
-    if points_2d.shape[0] < 2:
-        return None, None
-
-    mean = points_2d.mean(axis=0)
-    cov = np.cov(points_2d, rowvar=False)
-
-    vals, vecs = np.linalg.eigh(cov)
-    order = np.argsort(vals)[::-1]
-    vals = vals[order]
-    vecs = vecs[:, order]
-
-    axes = n_std * np.sqrt(vals)
-    t = np.linspace(0, 2 * np.pi, n_points)
-    circle = np.stack([np.cos(t), np.sin(t)])
-    ellipse = (vecs @ np.diag(axes) @ circle).T + mean
-
-    return ellipse[:, 0], ellipse[:, 1]
-
-
-# ---------- CLUSTER NAMING ----------
-def compute_cluster_names(
-    article_ids,
-    article_vectors,
-    articles_concepts,
-    cluster_labels,
-    unique_concepts,
-    concept_embs,
-    max_terms: int = 5,
-):
-    """
-    Assign a semantic label to each cluster based on:
-    - most frequent concepts in the cluster
-    - concepts closest to cluster centroid in embedding space
-    """
-    cluster_names = {}
-    for cl in np.unique(cluster_labels):
-        idx = np.where(cluster_labels == cl)[0]
-
-        # Bag-of-concepts: frequency within cluster
-        counter = Counter()
-        for i in idx:
-            aid = article_ids[i]
-            counter.update(articles_concepts[aid])
-        top_freq = [w for w, _ in counter.most_common(max_terms)]
-
-        # Centroid in embedding space
-        centroid = article_vectors[idx].mean(axis=0)
-        sims = cosine_similarity(centroid.reshape(1, -1), concept_embs)[0]
-        top_sim_idx = np.argsort(sims)[-max_terms * 2:]  # a bit more, then dedupe
-        top_sim = [unique_concepts[j] for j in top_sim_idx[::-1]]
-
-        # Combine (freq first, then similar) without duplicates
-        combined = []
-        for w in top_freq + top_sim:
-            if w not in combined:
-                combined.append(w)
-            if len(combined) >= max_terms:
-                break
-
-        label = ", ".join(combined) if combined else "Miscellaneous"
-        cluster_names[cl] = label
-
-    return cluster_names
-
-
-# ---------- PLOTTING ----------
+from src.utils import (
+    merge_dfs,
+    safe_parse_concepts,
+    get_embeddings,
+    interpret_axes,
+    build_axis_labels,
+    silhouette_method,
+    compute_cluster_names,
+    compute_cluster_ellipse,
+)
 def plotly_plot(
     article_ids,
     article_2d,
@@ -135,6 +36,7 @@ def plotly_plot(
     pca_var_ratio,
     output_file="plot.html",
 ):
+    """Create an interactive Plotly visualization of the PCA results with clusters."""
     fig = go.Figure()
 
     x_min, x_max = article_2d[:, 0].min(), article_2d[:, 0].max()
@@ -250,19 +152,27 @@ def plotly_plot(
 
     fig.write_html(output_file)
     print(f"Plot saved to {output_file}")
+    
+    # Also save a static PNG for README
+    png_file = output_file.replace('.html', '_static.png')
+    try:
+        fig.write_image(png_file, width=1000, height=700, scale=2)
+        print(f"Static plot saved to {png_file}")
+    except Exception as e:
+        print(f"Could not save PNG (install kaleido with: pip install kaleido): {e}")
 
 
-# ---------- MAIN PROCESS ----------
 def plot_articles_and_concepts(
     article_ids,
     article_vectors,
     articles_concepts,
     model,
-    n_clusters=4,
+    n_clusters=None,
+    use_silhouette_method=True,
     top_axis_terms=10,
     output_html="articles_pca_plot.html",
 ):
-
+    """Main function to perform PCA, clustering, and visualization."""
     unique_concepts = sorted({c for lst in articles_concepts.values() for c in lst})
     concept_embs = model.encode(unique_concepts)
 
@@ -286,6 +196,18 @@ def plot_articles_and_concepts(
     mask = [c in axis_words for c in unique_concepts]
     concept_2d_filtered = concept_2d[mask]
     concept_labels_filtered = [c for c in unique_concepts if c in axis_words]
+
+    # Determine optimal number of clusters
+    if use_silhouette_method and n_clusters is None:
+        print("\n" + "="*50)
+        print("FINDING OPTIMAL NUMBER OF CLUSTERS")
+        print("="*50)
+        silhouette_result = silhouette_method(article_vectors, output_file="silhouette_plot.html")
+        n_clusters = silhouette_result['optimal_k']
+        print(f"Using optimal k={n_clusters} from silhouette method")
+    elif n_clusters is None:
+        n_clusters = 5  # Default fallback
+        print(f"Using default n_clusters={n_clusters}")
 
     # Clustering
     km = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
@@ -325,13 +247,20 @@ def plot_articles_and_concepts(
     )
 
 
-def main(summary_dir: str, output_html: str):
+def main(summary_dir: str, output_html: str, n_clusters=None, use_silhouette_method=True):
+    """Main entry point for the script."""
     df = merge_dfs(summary_dir)
 
-    articles_concepts = {
-        row["Article"]: eval(row["Content"])
-        for _, row in df.iterrows()
-    }
+    articles_concepts = {}
+    for _, row in df.iterrows():
+        try:
+            concepts = safe_parse_concepts(row["Content"])
+            if isinstance(concepts, list) and len(concepts) == 10:
+                articles_concepts[row["Article"]] = concepts
+                print(concepts)
+        except Exception as e:
+            print(f"Warning: Could not parse concepts for {row['Article']}: {e}")
+            continue
 
     model = SentenceTransformer("all-MiniLM-L6-v2")
     article_ids, article_vectors = get_embeddings(model, articles_concepts)
@@ -341,6 +270,8 @@ def main(summary_dir: str, output_html: str):
         article_vectors,
         articles_concepts,
         model,
+        n_clusters=n_clusters,
+        use_silhouette_method=use_silhouette_method,
         output_html=output_html,
     )
 
@@ -351,6 +282,22 @@ if __name__ == "__main__":
     parser.add_argument(
         "--output_html", default="articles_pca_plot.html"
     )
+    parser.add_argument(
+        "--n_clusters", 
+        type=int, 
+        default=None, 
+        help="Number of clusters (if not specified, silhouette method will be used)"
+    )
+    parser.add_argument(
+        "--no_silhouette_method", 
+        action="store_true", 
+        help="Disable silhouette method and use default n_clusters=5 if not specified"
+    )
     args = parser.parse_args()
 
-    main(args.summary_dir, args.output_html)
+    main(
+        args.summary_dir, 
+        args.output_html, 
+        n_clusters=args.n_clusters,
+        use_silhouette_method=not args.no_silhouette_method
+    )
