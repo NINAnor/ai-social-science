@@ -178,7 +178,6 @@ pyrightconfig.json
 markdown_output/
 files_to_process/
 summaries*/
-*.png
-*.html
 log*
 test/
+*.ipynb

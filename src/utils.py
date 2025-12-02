@@ -33,6 +33,14 @@ def safe_parse_concepts(content_str):
     if not content_str:
         return []
     
+    # Handle markdown code blocks (remove ```python and ``` markers)
+    if content_str.startswith("```python") and content_str.endswith("```"):
+        # Extract content between the markdown code block markers
+        content_str = content_str[9:-3].strip()  # Remove ```python and ```
+    elif content_str.startswith("```") and content_str.endswith("```"):
+        # Handle generic code blocks
+        content_str = content_str[3:-3].strip()  # Remove ``` and ```
+    
     try:
         # Try to parse as literal (safer than eval)
         return ast.literal_eval(content_str)
@@ -54,6 +62,7 @@ def get_embeddings(model, articles_concepts: dict):
     for art_id, concepts in articles_concepts.items():
         concept_embs = model.encode(concepts)
         article_vec = np.mean(concept_embs, axis=0)
+        print(article_vec.shape)
         article_ids.append(art_id)
         article_vectors.append(article_vec)
 
@@ -101,6 +110,8 @@ def silhouette_method(article_vectors, k_range=None, output_file="silhouette_plo
     Returns:
         dict: Contains k_values, silhouette_scores, and suggested optimal k
     """
+    import os
+    
     if k_range is None:
         max_k = min(15, len(article_vectors) - 1)
         k_range = range(2, max_k + 1)  # Start from 2 since silhouette needs at least 2 clusters
@@ -163,8 +174,18 @@ def silhouette_method(article_vectors, k_range=None, output_file="silhouette_plo
         yaxis=dict(range=[0, 1])  # Silhouette scores range from -1 to 1, but typically 0 to 1
     )
     
+    # Save HTML plot
     fig.write_html(output_file)
     print(f"Silhouette plot saved to {output_file}")
+    
+    # Also save static PNG
+    png_file = output_file.replace('.html', '_static.png')
+    try:
+        fig.write_image(png_file, width=800, height=500, scale=2)
+        print(f"Static silhouette plot saved to {png_file}")
+    except Exception as e:
+        print(f"Could not save PNG (install kaleido with: pip install kaleido): {e}")
+    
     print(f"Suggested optimal number of clusters: {optimal_k} (silhouette score: {optimal_score:.3f})")
     
     return {

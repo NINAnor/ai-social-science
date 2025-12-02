@@ -20,7 +20,7 @@ def summarize_article_ollama(prompt: str, model: str) -> str:
     response = client.chat(
         model=model,
         messages=[{"role": "user", "content": prompt}],
-        options={"num_ctx": 30000},
+        options={"num_ctx": 35000},
     )
 
     print()
@@ -42,16 +42,15 @@ def get_words(input_path: str, output_path: str, model: str = "gpt"):
     with input_file.open(encoding="utf-8") as file:
         article = file.read()
 
-    # Concepts related to social acceptance 
-    # Use of social acceptance 
-    prompt = f"""Read the text. Identify the ten most essential conceptual terms
-    that capture the core ideas of the article.
-
-    - Use single words only (no phrases).
-    - Pick concepts, not summaries or opinions.
-    - Output a valid python list of exactly ten lowercase words.
-    - Do not repeat near-synonyms
-    - Output the python list only, no explanation, reasoning or additional text.
+    prompt = f"""Read the text. Identify the concepts that appear in the semantic neighbourhood of the idea of “social acceptance” and 
+    its close synonyms (public acceptance, community acceptance, societal acceptance, stakeholder acceptance, licence to operate, social licence).
+        - Use only single words.
+        - Output a Python list of 0–10 lowercase words.
+        - Include only concepts that relate to how the article uses, defines, or implies social acceptance.
+        - Ignore concepts unrelated to social acceptance.
+        - If the text contains no content related to social acceptance or its close synonyms, output an empty list [] and do not infer or guess.
+        - Only output words that occur explicitly in the text or are directly implied by its discussion of acceptance. 
+        - Do not add speculative concepts.
 
     Here is the article: \n\n{article}"""
 

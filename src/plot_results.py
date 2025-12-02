@@ -1,9 +1,12 @@
 """
 Main plotting script for analyzing and visualizing article concepts and clusters.
+This script focuses on PCA visualization and loads pre-computed cluster analysis results.
+For cluster optimization, use the separate find_optimal_clusters.py script.
 """
 import argparse
 import sys
 import os
+import json
 
 import numpy as np
 import plotly.graph_objects as go
@@ -21,10 +24,42 @@ from src.utils import (
     get_embeddings,
     interpret_axes,
     build_axis_labels,
-    silhouette_method,
     compute_cluster_names,
     compute_cluster_ellipse,
 )
+
+
+def load_cluster_analysis_results(results_file="assets/cluster_analysis_results.json"):
+    try:
+        with open(results_file, 'r') as f:
+            results = json.load(f)
+        print(f"Loaded cluster analysis results from {results_file}")
+        return results
+    except FileNotFoundError:
+        print(f"No pre-computed cluster analysis found at {results_file}")
+        return None
+
+
+def determine_optimal_clusters(
+    n_clusters=None, 
+    assets_dir="assets",
+    load_precomputed=True
+):
+
+    if n_clusters is not None:
+        print(f"Using explicitly specified n_clusters={n_clusters}")
+        return n_clusters
+    
+    if load_precomputed:
+        results_file = os.path.join(assets_dir, "cluster_analysis_results.json")
+        precomputed_results = load_cluster_analysis_results(results_file)
+        if precomputed_results:
+            optimal_k = precomputed_results['optimal_k']
+            optimal_score = precomputed_results['optimal_score']
+            print(f"Using precomputed optimal clusters: k={optimal_k} (silhouette score: {optimal_score:.3f})")
+            print(f"(If you want to recompute, run: python src/find_optimal_clusters.py --summary_dir <dir>)")
+            return optimal_k
+
 def plotly_plot(
     article_ids,
     article_2d,
@@ -168,15 +203,15 @@ def plot_articles_and_concepts(
     articles_concepts,
     model,
     n_clusters=None,
-    use_silhouette_method=True,
     top_axis_terms=10,
     output_html="articles_pca_plot.html",
+    assets_dir="assets",
+    load_precomputed_clusters=True,
 ):
-    """Main function to perform PCA, clustering, and visualization."""
+
     unique_concepts = sorted({c for lst in articles_concepts.values() for c in lst})
     concept_embs = model.encode(unique_concepts)
 
-    # PCA
     pca = PCA(n_components=2)
     article_2d = pca.fit_transform(article_vectors)
     concept_2d = pca.transform(concept_embs)
@@ -197,17 +232,12 @@ def plot_articles_and_concepts(
     concept_2d_filtered = concept_2d[mask]
     concept_labels_filtered = [c for c in unique_concepts if c in axis_words]
 
-    # Determine optimal number of clusters
-    if use_silhouette_method and n_clusters is None:
-        print("\n" + "="*50)
-        print("FINDING OPTIMAL NUMBER OF CLUSTERS")
-        print("="*50)
-        silhouette_result = silhouette_method(article_vectors, output_file="silhouette_plot.html")
-        n_clusters = silhouette_result['optimal_k']
-        print(f"Using optimal k={n_clusters} from silhouette method")
-    elif n_clusters is None:
-        n_clusters = 5  # Default fallback
-        print(f"Using default n_clusters={n_clusters}")
+    # Determine optimal number of clusters using the new centralized logic
+    n_clusters = determine_optimal_clusters(
+        n_clusters=n_clusters,
+        assets_dir=assets_dir,
+        load_precomputed=load_precomputed_clusters
+    )
 
     # Clustering
     km = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
@@ -247,20 +277,32 @@ def plot_articles_and_concepts(
     )
 
 
-def main(summary_dir: str, output_html: str, n_clusters=None, use_silhouette_method=True):
+def main(summary_dir: str, output_html: str, n_clusters=None, load_precomputed_clusters=True):
     """Main entry point for the script."""
+    import os
+    
+    # Create assets directory if it doesn't exist
+    assets_dir = "assets"
+    os.makedirs(assets_dir, exist_ok=True)
+    
+    # Update output paths to use assets directory
+    if not output_html.startswith(assets_dir):
+        output_html = os.path.join(assets_dir, os.path.basename(output_html))
+    
     df = merge_dfs(summary_dir)
 
     articles_concepts = {}
     for _, row in df.iterrows():
-        try:
-            concepts = safe_parse_concepts(row["Content"])
-            if isinstance(concepts, list) and len(concepts) == 10:
-                articles_concepts[row["Article"]] = concepts
-                print(concepts)
-        except Exception as e:
-            print(f"Warning: Could not parse concepts for {row['Article']}: {e}")
-            continue
+        concepts = safe_parse_concepts(row["Content"])
+
+        if (
+            isinstance(concepts, list)
+            and len(concepts) > 0
+            and len(concepts) <= 10
+            and all(isinstance(w, str) and ' ' not in w for w in concepts)
+        ):
+            articles_concepts[row["Article"]] = concepts
+            print(concepts)
 
     model = SentenceTransformer("all-MiniLM-L6-v2")
     article_ids, article_vectors = get_embeddings(model, articles_concepts)
@@ -271,13 +313,32 @@ def main(summary_dir: str, output_html: str, n_clusters=None, use_silhouette_met
         articles_concepts,
         model,
         n_clusters=n_clusters,
-        use_silhouette_method=use_silhouette_method,
         output_html=output_html,
+        assets_dir=assets_dir,
+        load_precomputed_clusters=load_precomputed_clusters,
     )
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        description="Generate PCA visualization of article clusters",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Basic usage (tries to load precomputed cluster analysis)
+  python src/plot_results.py --summary_dir summaries_deepseek-r1_trial1
+  
+  # Use specific number of clusters
+  python src/plot_results.py --summary_dir summaries_deepseek-r1_trial1 --n_clusters 5
+  
+  # Skip loading precomputed results (use default n_clusters=5)
+  python src/plot_results.py --summary_dir summaries_deepseek-r1_trial1 --no_load_precomputed
+
+Recommended workflow:
+  1. First run: python src/find_optimal_clusters.py --summary_dir <dir>
+  2. Then run:  python src/plot_results.py --summary_dir <dir>
+        """
+    )
     parser.add_argument("--summary_dir", required=True)
     parser.add_argument(
         "--output_html", default="articles_pca_plot.html"
@@ -286,12 +347,12 @@ if __name__ == "__main__":
         "--n_clusters", 
         type=int, 
         default=None, 
-        help="Number of clusters (if not specified, silhouette method will be used)"
+        help="Number of clusters (if not specified, will try to load precomputed results)"
     )
     parser.add_argument(
-        "--no_silhouette_method", 
-        action="store_true", 
-        help="Disable silhouette method and use default n_clusters=5 if not specified"
+        "--no_load_precomputed",
+        action="store_true",
+        help="Don't try to load precomputed cluster analysis results"
     )
     args = parser.parse_args()
 
@@ -299,5 +360,5 @@ if __name__ == "__main__":
         args.summary_dir, 
         args.output_html, 
         n_clusters=args.n_clusters,
-        use_silhouette_method=not args.no_silhouette_method
+        load_precomputed_clusters=not args.no_load_precomputed
     )
