@@ -45,6 +45,7 @@ def get_words(input_path: str, output_path: str, model: str = "gpt"):
     prompt = f"""Read the text. Identify the concepts that appear in the semantic neighbourhood of the idea of “social acceptance” and 
     its close synonyms (public acceptance, community acceptance, societal acceptance, stakeholder acceptance, licence to operate, social licence).
         - Use only single words.
+        - Do not use "acceptance" and its morphological variants (acceptability, accepted, etc.)
         - Output a Python list of 0–10 lowercase words.
         - Include only concepts that relate to how the article uses, defines, or implies social acceptance.
         - Ignore concepts unrelated to social acceptance.

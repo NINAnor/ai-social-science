@@ -69,11 +69,11 @@ def get_embeddings(model, articles_concepts: dict):
     return article_ids, np.vstack(article_vectors)
 
 
-# ---------- PCA INTERPRETATION ----------
+# ---------- UMAP INTERPRETATION ----------
 def interpret_axes(concept_2d, unique_concepts, top=10):
-    """Interpret PCA axes by finding concepts with highest/lowest loadings."""
-    pc1 = concept_2d[:, 0]
-    pc2 = concept_2d[:, 1]
+    """Interpret UMAP axes by finding concepts with highest/lowest loadings."""
+    umap1 = concept_2d[:, 0]
+    umap2 = concept_2d[:, 1]
 
     def top_terms(values):
         return {
@@ -81,19 +81,19 @@ def interpret_axes(concept_2d, unique_concepts, top=10):
             "neg": [unique_concepts[i] for i in np.argsort(values)[:top]],
         }
 
-    return {"PC1": top_terms(pc1), "PC2": top_terms(pc2)}
+    return {"UMAP1": top_terms(umap1), "UMAP2": top_terms(umap2)}
 
 
 def build_axis_labels(axis_info, max_terms=5):
-    """Build axis labels from PCA interpretation."""
+    """Build axis labels from UMAP interpretation."""
     def fmt(name, terms):
         return f"{name}: " + ", ".join(terms[:max_terms])
 
     return {
-        "PC1_pos": fmt("PC1+", axis_info["PC1"]["pos"]),
-        "PC1_neg": fmt("PC1−", axis_info["PC1"]["neg"]),
-        "PC2_pos": fmt("PC2+", axis_info["PC2"]["pos"]),
-        "PC2_neg": fmt("PC2−", axis_info["PC2"]["neg"]),
+        "UMAP1_pos": fmt("UMAP1+", axis_info["UMAP1"]["pos"]),
+        "UMAP1_neg": fmt("UMAP1−", axis_info["UMAP1"]["neg"]),
+        "UMAP2_pos": fmt("UMAP2+", axis_info["UMAP2"]["pos"]),
+        "UMAP2_neg": fmt("UMAP2−", axis_info["UMAP2"]["neg"]),
     }
 
 

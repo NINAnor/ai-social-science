@@ -22,6 +22,7 @@ dependencies = [
   "py-zerox>=0.0.7",
   "scikit-learn>=1.7.2",
   "sentence-transformers>=5.1.2",
+  "umap-learn>=0.5.9.post2",
 ]
 description = ""
 license = "GPL-3.0+"

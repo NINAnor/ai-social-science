@@ -129,7 +129,7 @@ if __name__ == "__main__":
         epilog="""
 Examples:
   # Basic usage - analyze clusters 2-15
-  python src/find_optimal_clusters.py --summary_dir summaries_deepseek-r1_trial1
+  uv run python src/find_optimal_clusters.py --summary_dir summaries_deepseek-r1_trial1
     """
     )
     parser.add_argument(

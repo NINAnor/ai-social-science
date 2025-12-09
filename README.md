@@ -64,11 +64,21 @@ ur dataset of 742 articles
 
 ## Results and interpretation
 
-Results from the **Silhouette method** show that in our case the optimal number of clusters is **3** (i.e. the number of cluster k maximizing the silhouette score of 0.071).
+In total, out of the 742 article, only 508 had a valid output based on our prompt.
 
+Results from the **Silhouette method** show that in our case the optimal number of clusters is **3** (i.e. the number of cluster k maximizing the silhouette score of 0.17).
+
+<img src="./assets/silhouette_plot_static.png" width="75%" height="75%"/>
 
 The plot below shows articles clustered in a 2D PCA space based on their conceptual similarity:
 
-<img src="./assets/articles_pca_plot_static.png" width="75%" height="75%"/>
+<img src="./assets/articles_umap_plot_static.png" width="75%" height="75%"/>
 
-**📊 [View Interactive Plot](./assets/articles_pca_plot.html)** - Click to explore the interactive version with hover details, zoom, and concept overlays.
+**📊 [Interactive version of the plot](./assets/articles_umap_plot.html)** 
+
+We also plotted the concepts words represented in the articles along with their frequencies:
+
+<img src="./assets/articles_umap_plot_concepts_only_static.png" width="75%" height="75%"/>
+
+**📊 [Interactive version of the plot](./assets/articles_umap_plot_concepts_only.html)**
+
