@@ -42,15 +42,21 @@ def get_words(input_path: str, output_path: str, model: str = "gpt"):
     with input_file.open(encoding="utf-8") as file:
         article = file.read()
 
-    prompt = f"""Read the text. Identify the concepts that appear in the semantic neighbourhood of the idea of “social acceptance” and 
-    its close synonyms (public acceptance, community acceptance, societal acceptance, stakeholder acceptance, licence to operate, social licence).
+    prompt = f"""Read the text. Identify the concepts that appear in the semantic \
+neighbourhood of the idea of "social acceptance" and
+    its close synonyms (public acceptance, community acceptance, societal \
+acceptance, stakeholder acceptance, licence to operate, social licence).
         - Use only single words.
-        - Do not use "acceptance" and its morphological variants (acceptability, accepted, etc.)
+        - Do not use "acceptance" and its morphological variants \
+(acceptability, accepted, etc.)
         - Output a Python list of 0–10 lowercase words.
-        - Include only concepts that relate to how the article uses, defines, or implies social acceptance.
+        - Include only concepts that relate to how the article uses, defines, \
+or implies social acceptance.
         - Ignore concepts unrelated to social acceptance.
-        - If the text contains no content related to social acceptance or its close synonyms, output an empty list [] and do not infer or guess.
-        - Only output words that occur explicitly in the text or are directly implied by its discussion of acceptance. 
+        - If the text contains no content related to social acceptance or its \
+close synonyms, output an empty list [] and do not infer or guess.
+        - Only output words that occur explicitly in the text or are directly \
+implied by its discussion of acceptance.
         - Do not add speculative concepts.
 
     Here is the article: \n\n{article}"""

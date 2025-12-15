@@ -1,6 +1,7 @@
 """
 Utility functions for data processing, clustering, and analysis.
 """
+
 import ast
 import pathlib
 from collections import Counter
@@ -8,10 +9,9 @@ from collections import Counter
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
-import plotly.express as px
 from sklearn.cluster import KMeans
-from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.metrics import silhouette_score
+from sklearn.metrics.pairwise import cosine_similarity
 
 
 # ---------- DATA PROCESSING ----------
@@ -26,13 +26,13 @@ def safe_parse_concepts(content_str):
     """Safely parse concept list from string, handling various formats."""
     if pd.isna(content_str):
         return []
-    
+
     content_str = str(content_str).strip()
-    
+
     # If it's empty, return empty list
     if not content_str:
         return []
-    
+
     # Handle markdown code blocks (remove ```python and ``` markers)
     if content_str.startswith("```python") and content_str.endswith("```"):
         # Extract content between the markdown code block markers
@@ -40,7 +40,7 @@ def safe_parse_concepts(content_str):
     elif content_str.startswith("```") and content_str.endswith("```"):
         # Handle generic code blocks
         content_str = content_str[3:-3].strip()  # Remove ``` and ```
-    
+
     try:
         # Try to parse as literal (safer than eval)
         return ast.literal_eval(content_str)
@@ -86,6 +86,7 @@ def interpret_axes(concept_2d, unique_concepts, top=10):
 
 def build_axis_labels(axis_info, max_terms=5):
     """Build axis labels from UMAP interpretation."""
+
     def fmt(name, terms):
         return f"{name}: " + ", ".join(terms[:max_terms])
 
@@ -98,39 +99,42 @@ def build_axis_labels(axis_info, max_terms=5):
 
 
 # ---------- CLUSTER OPTIMIZATION ----------
-def silhouette_method(article_vectors, k_range=None, output_file="silhouette_plot.html"):
+def silhouette_method(
+    article_vectors, k_range=None, output_file="silhouette_plot.html"
+):
     """
     Use the silhouette method to find optimal number of clusters.
-    
+
     Args:
         article_vectors: The embedding vectors for articles
         k_range: Range of k values to test (default: 2 to min(15, n_samples-1))
         output_file: HTML file to save the silhouette plot
-    
+
     Returns:
         dict: Contains k_values, silhouette_scores, and suggested optimal k
     """
-    import os
-    
+
     if k_range is None:
         max_k = min(15, len(article_vectors) - 1)
-        k_range = range(2, max_k + 1)  # Start from 2 since silhouette needs at least 2 clusters
-    
+        k_range = range(
+            2, max_k + 1
+        )  # Start from 2 since silhouette needs at least 2 clusters
+
     silhouette_scores = []
-    
+
     print("Computing silhouette method...")
     for k in k_range:
         if k >= len(article_vectors):
             break
-            
+
         kmeans = KMeans(n_clusters=k, random_state=42, n_init=10)
         cluster_labels = kmeans.fit_predict(article_vectors)
-        
+
         # Calculate silhouette score
         score = silhouette_score(article_vectors, cluster_labels)
         silhouette_scores.append(score)
         print(f"  k={k}: silhouette score={score:.3f}")
-    
+
     # Find the optimal k (highest silhouette score)
     if silhouette_scores:
         optimal_idx = np.argmax(silhouette_scores)
@@ -139,60 +143,69 @@ def silhouette_method(article_vectors, k_range=None, output_file="silhouette_plo
     else:
         optimal_k = 2  # Default fallback
         optimal_score = 0.0
-    
+
     # Create plotly visualization
     fig = go.Figure()
-    
-    k_values = list(k_range)[:len(silhouette_scores)]
-    
-    fig.add_trace(go.Scatter(
-        x=k_values,
-        y=silhouette_scores,
-        mode='lines+markers',
-        name='Silhouette Score',
-        line=dict(color='blue', width=2),
-        marker=dict(size=8)
-    ))
-    
+
+    k_values = list(k_range)[: len(silhouette_scores)]
+
+    fig.add_trace(
+        go.Scatter(
+            x=k_values,
+            y=silhouette_scores,
+            mode="lines+markers",
+            name="Silhouette Score",
+            line=dict(color="blue", width=2),
+            marker=dict(size=8),
+        )
+    )
+
     # Highlight the suggested optimal k
     if optimal_k in k_values:
-        fig.add_trace(go.Scatter(
-            x=[optimal_k],
-            y=[optimal_score],
-            mode='markers',
-            name=f'Optimal k={optimal_k} (score={optimal_score:.3f})',
-            marker=dict(size=15, color='red', symbol='diamond')
-        ))
-    
+        fig.add_trace(
+            go.Scatter(
+                x=[optimal_k],
+                y=[optimal_score],
+                mode="markers",
+                name=f"Optimal k={optimal_k} (score={optimal_score:.3f})",
+                marker=dict(size=15, color="red", symbol="diamond"),
+            )
+        )
+
     fig.update_layout(
-        title='Silhouette Method for Optimal Number of Clusters',
-        xaxis_title='Number of Clusters (k)',
-        yaxis_title='Silhouette Score',
+        title="Silhouette Method for Optimal Number of Clusters",
+        xaxis_title="Number of Clusters (k)",
+        yaxis_title="Silhouette Score",
         width=800,
         height=500,
         showlegend=True,
-        yaxis=dict(range=[0, 1])  # Silhouette scores range from -1 to 1, but typically 0 to 1
+        yaxis=dict(
+            range=[0, 1]
+        ),  # Silhouette scores range from -1 to 1, but typically 0 to 1
     )
-    
+
     # Save HTML plot
     fig.write_html(output_file)
     print(f"Silhouette plot saved to {output_file}")
-    
+
     # Also save static PNG
-    png_file = output_file.replace('.html', '_static.png')
+    png_file = output_file.replace(".html", "_static.png")
     try:
         fig.write_image(png_file, width=800, height=500, scale=2)
         print(f"Static silhouette plot saved to {png_file}")
     except Exception as e:
         print(f"Could not save PNG (install kaleido with: pip install kaleido): {e}")
-    
-    print(f"Suggested optimal number of clusters: {optimal_k} (silhouette score: {optimal_score:.3f})")
-    
+
+    print(
+        f"Suggested optimal number of clusters: {optimal_k} "
+        f"(silhouette score: {optimal_score:.3f})"
+    )
+
     return {
-        'k_values': k_values,
-        'silhouette_scores': silhouette_scores,
-        'optimal_k': optimal_k,
-        'optimal_score': optimal_score
+        "k_values": k_values,
+        "silhouette_scores": silhouette_scores,
+        "optimal_k": optimal_k,
+        "optimal_score": optimal_score,
     }
 
 
@@ -225,7 +238,7 @@ def compute_cluster_names(
         # Centroid in embedding space
         centroid = article_vectors[idx].mean(axis=0)
         sims = cosine_similarity(centroid.reshape(1, -1), concept_embs)[0]
-        top_sim_idx = np.argsort(sims)[-max_terms * 2:]  # a bit more, then dedupe
+        top_sim_idx = np.argsort(sims)[-max_terms * 2 :]  # a bit more, then dedupe
         top_sim = [unique_concepts[j] for j in top_sim_idx[::-1]]
 
         # Combine (freq first, then similar) without duplicates
@@ -243,7 +256,9 @@ def compute_cluster_names(
 
 
 # ---------- GEOMETRY UTILITIES ----------
-def compute_cluster_ellipse(points_2d: np.ndarray, n_std: float = 2.0, n_points: int = 100):
+def compute_cluster_ellipse(
+    points_2d: np.ndarray, n_std: float = 2.0, n_points: int = 100
+):
     """Return ellipse around a cluster using covariance."""
     if points_2d.shape[0] < 2:
         return None, None
